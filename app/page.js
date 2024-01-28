@@ -1,112 +1,137 @@
-import Image from "next/image";
+"use client"
+
+import { useState, useEffect, useRef } from 'react';
 
 export default function Home() {
+  const [recording, setRecording] = useState(false);
+  const [showLoadingDots, setShowLoadingDots] = useState(false);
+  const [currentAudioIndex, setCurrentAudioIndex] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showImages, setShowImages] = useState(false);
+  const prevLoadingState = useRef(showLoadingDots);
+  const firstClickRef = useRef(true);
+  const imageDisplayTimeoutRef = useRef(null);
+  const [isPlayingPartTwo, setIsPlayingPartTwo] = useState(false);
+
+  
+  const audioList = [
+    '/1.mp3',
+    '/2.mp3',
+    '/3.mp3',
+    '/4.mp3',
+    '/5.mp3',
+    '/6.mp3',
+  ];
+  const imageList = [
+    '/image1.jpg',
+    '/image2.jpg',
+    '/image3.jpg',
+  ];
+
+  function toggleRecording() {
+    if (firstClickRef.current) {
+      new Audio(audioList[0]).play();
+      firstClickRef.current = false;
+      setCurrentAudioIndex(1);
+    } else {
+      setRecording(!recording);
+      setShowImages(false); // Hide images when recording starts
+      if (recording) {
+        setShowLoadingDots(true);
+        const randomTime = Math.random() * (4000 - 3000) + 3000;
+        setTimeout(() => setShowLoadingDots(false), randomTime);
+      }
+    }
+  }  
+
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      if (event.key === ' ') {
+        event.preventDefault();
+        toggleRecording();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [recording]);
+
+  useEffect(() => {
+    if (prevLoadingState.current && !showLoadingDots && !firstClickRef.current && !isPlayingPartTwo) {
+      const audio = new Audio(audioList[currentAudioIndex]);
+      audio.play();
+
+      if (currentAudioIndex === 2) {
+        audio.onended = () => {
+          setShowLoadingDots(true);
+          setIsPlayingPartTwo(true);
+
+          setTimeout(() => {
+            const nextAudio = new Audio('/3_part_2.mp3');
+            nextAudio.play();
+            nextAudio.onended = () => {
+              setIsPlayingPartTwo(false);
+            };
+
+            setShowLoadingDots(false);
+            setShowImages(true);
+            setCurrentImageIndex(0);
+          }, 5000);
+        };
+      } else {
+        setShowImages(false);
+      }
+
+      if (!isPlayingPartTwo) {
+        const nextIndex = (currentAudioIndex + 1) % audioList.length;
+        setCurrentAudioIndex(nextIndex);
+      }
+    }
+    prevLoadingState.current = showLoadingDots;
+  }, [showLoadingDots, currentAudioIndex, isPlayingPartTwo]);
+
+  useEffect(() => {
+    let imageRotationInterval = null;
+  
+    if (showImages) {
+      imageRotationInterval = setInterval(() => {
+        setCurrentImageIndex((prevIndex) => (prevIndex + 1) % imageList.length);
+      }, 7000); // Rotate images every 5 seconds
+    }
+  
+    return () => {
+      if (imageRotationInterval) {
+        clearInterval(imageRotationInterval);
+      }
+    };
+  }, [showImages, imageList.length]);
+  
+
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+    <main className="flex h-screen flex-col items-center bg-gradient-to-t from-rose-600 via-red-500 to-red-600 text-white">
+      <div className="flex flex-col items-center justify-center space-y-12 mt-[240px]">
+        <button 
+          className={`h-[160px] w-[160px] rounded-full shadow-2xl bg-white ${recording ? 'agent-circle' : ''}`}
+          onClick={toggleRecording}>
+        </button>
+        {recording && (
+          <div className="flex justify-center items-center space-x-4">
+            <p className="text-4xl text-white font-bold">Listening...</p>
+          </div>
+        )}
+        {showLoadingDots && (
+          <div className="loading-dots flex justify-center items-center">
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+        )}
+        {showImages && (
+          <img className="w-[200px] rounded-2xl floating"src={imageList[currentImageIndex]} alt="Displayed Image" />
+        )}
       </div>
     </main>
   );
