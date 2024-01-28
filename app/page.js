@@ -5,22 +5,13 @@ import { useState, useEffect, useRef } from 'react';
 export default function Home() {
   const [recording, setRecording] = useState(false);
   const [showLoadingDots, setShowLoadingDots] = useState(false);
-  const [currentAudioIndex, setCurrentAudioIndex] = useState(0);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showImages, setShowImages] = useState(false);
-  const prevLoadingState = useRef(showLoadingDots);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const firstClickRef = useRef(true);
-  const imageDisplayTimeoutRef = useRef(null);
-  const [isPlayingPartTwo, setIsPlayingPartTwo] = useState(false);
 
-  
   const audioList = [
     '/1.mp3',
     '/2.mp3',
-    '/3.mp3',
-    '/4.mp3',
-    '/5.mp3',
-    '/6.mp3',
   ];
   const imageList = [
     '/image1.jpg',
@@ -30,19 +21,32 @@ export default function Home() {
 
   function toggleRecording() {
     if (firstClickRef.current) {
+      // Play the first audio clip on the first click
       new Audio(audioList[0]).play();
       firstClickRef.current = false;
-      setCurrentAudioIndex(1);
     } else {
+      // Toggle recording state
       setRecording(!recording);
-      setShowImages(false); // Hide images when recording starts
+
       if (recording) {
+        // Simulate thinking phase
         setShowLoadingDots(true);
-        const randomTime = Math.random() * (4000 - 3000) + 3000;
-        setTimeout(() => setShowLoadingDots(false), randomTime);
+        setTimeout(() => {
+          setShowLoadingDots(false);
+          // Play the second audio clip after the thinking phase
+          new Audio(audioList[1]).play();
+
+          // Start showing images 5 seconds after the 2nd clip starts
+          setTimeout(() => {
+            setShowImages(true);
+          }, 10000);
+        }, 2000); // Loading dots displayed for 2 seconds
+      } else {
+        // Hide images when recording starts
+        setShowImages(false);
       }
     }
-  }  
+  }
 
   useEffect(() => {
     const handleKeyPress = (event) => {
@@ -59,55 +63,21 @@ export default function Home() {
   }, [recording]);
 
   useEffect(() => {
-    if (prevLoadingState.current && !showLoadingDots && !firstClickRef.current && !isPlayingPartTwo) {
-      const audio = new Audio(audioList[currentAudioIndex]);
-      audio.play();
-
-      if (currentAudioIndex === 2) {
-        audio.onended = () => {
-          setShowLoadingDots(true);
-          setIsPlayingPartTwo(true);
-
-          setTimeout(() => {
-            const nextAudio = new Audio('/3_part_2.mp3');
-            nextAudio.play();
-            nextAudio.onended = () => {
-              setIsPlayingPartTwo(false);
-            };
-
-            setShowLoadingDots(false);
-            setShowImages(true);
-            setCurrentImageIndex(0);
-          }, 5000);
-        };
-      } else {
-        setShowImages(false);
-      }
-
-      if (!isPlayingPartTwo) {
-        const nextIndex = (currentAudioIndex + 1) % audioList.length;
-        setCurrentAudioIndex(nextIndex);
-      }
-    }
-    prevLoadingState.current = showLoadingDots;
-  }, [showLoadingDots, currentAudioIndex, isPlayingPartTwo]);
-
-  useEffect(() => {
     let imageRotationInterval = null;
-  
+
     if (showImages) {
       imageRotationInterval = setInterval(() => {
         setCurrentImageIndex((prevIndex) => (prevIndex + 1) % imageList.length);
-      }, 7000); // Rotate images every 5 seconds
+      }, 5000); // Rotate images every 7 seconds
     }
-  
+
     return () => {
       if (imageRotationInterval) {
         clearInterval(imageRotationInterval);
       }
     };
   }, [showImages, imageList.length]);
-  
+
 
 
   return (
