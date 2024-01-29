@@ -1,61 +1,115 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function Home() {
-  const [listening, setListening] = useState(false);
-  const [audioData, setAudioData] = useState(null);
-  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [recording, setRecording] = useState(false);
+  const [showLoadingDots, setShowLoadingDots] = useState(false);
+  const [showImages, setShowImages] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [subtitle, setSubtitle] = useState("");
+  const firstClickRef = useRef(true);
+
+  const audioList = ["/1.mp3", "/2.mp3"];
+  const subtitles = [
+    "Did you eat any leafy greens today? And did you eat any fruits or vegetables?",
+    "Well, that’s ok. Let’s aim small and try to eat 100 grams berries once this week to start building a habit. Why don’t we take a look at your sleep data?",
+  ];
+  const imageList = ["/image1.jpg", "/image2.jpg", "/image3.jpg"];
+
+  function toggleRecording() {
+    if (firstClickRef.current) {
+      // Play the first audio clip on the first click
+      new Audio(audioList[0]).play();
+      setSubtitle(subtitles[0]);
+      firstClickRef.current = false;
+    } else {
+      // Toggle recording state
+      setRecording(!recording);
+
+      if (recording) {
+        // Simulate thinking phase
+        setShowLoadingDots(true);
+        setTimeout(() => {
+          setShowLoadingDots(false);
+          // Play the second audio clip after the thinking phase
+          new Audio(audioList[1]).play();
+          setSubtitle(subtitles[1]);
+
+          // Start showing images 5 seconds after the 2nd clip starts
+          setTimeout(() => {
+            setShowImages(true);
+          }, 10000);
+        }, 2000); // Loading dots displayed for 2 seconds
+      } else {
+        // Hide images and subtitles when recording starts
+        setShowImages(false);
+        setSubtitle("");
+      }
+    }
+  }
 
   useEffect(() => {
-    if (listening) {
-      navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then((stream) => {
-          const newMediaRecorder = new MediaRecorder(stream);
-          setMediaRecorder(newMediaRecorder);
-          let chunks = [];
-          newMediaRecorder.ondataavailable = (event) => chunks.push(event.data);
-          newMediaRecorder.onstop = () => {
-            const newAudioData = new Blob(chunks, {
-              type: "audio/mp3",
-            });
-            setAudioData(newAudioData);
-            playAudio(newAudioData);
-          };
-          newMediaRecorder.start();
-        })
-        .catch((error) => console.error("Audio recording error:", error));
-    } else if (mediaRecorder) {
-      mediaRecorder.stop();
-      mediaRecorder.stream.getTracks().forEach((track) => track.stop());
-    }
-  }, [listening]);
+    const handleKeyPress = (event) => {
+      if (event.key === " ") {
+        event.preventDefault();
+        toggleRecording();
+      }
+    };
 
-  const playAudio = (audioBlob) => {
-    const audioUrl = URL.createObjectURL(audioBlob);
-    const audio = new Audio(audioUrl);
-    audio.play().catch((e) => {
-      console.error("Error playing audio:", e);
-    });
-  };
+    window.addEventListener("keydown", handleKeyPress);
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [recording]);
+
+  useEffect(() => {
+    let imageRotationInterval = null;
+
+    if (showImages) {
+      imageRotationInterval = setInterval(() => {
+        setCurrentImageIndex((prevIndex) => (prevIndex + 1) % imageList.length);
+      }, 5000); // Rotate images every 7 seconds
+    }
+
+    return () => {
+      if (imageRotationInterval) {
+        clearInterval(imageRotationInterval);
+      }
+    };
+  }, [showImages, imageList.length]);
 
   return (
-    <main className="flex justify-center items-center h-screen bg-gradient-to-t from-rose-600 via-red-500 to-red-600">
-      <div className="flex flex-col justify-center items-center space-y-12">
-        <div
-          className={`rounded-full w-[180px] h-[180px] bg-white ${
-            listening ? "animation-listening" : ""
+    <main className="flex h-screen flex-col items-center bg-gradient-to-t from-rose-600 via-red-500 to-red-600 text-white">
+      <div className="flex flex-col items-center justify-center space-y-12 mt-[240px]">
+        <button
+          className={`h-[160px] w-[160px] rounded-full shadow-2xl bg-white ${
+            recording ? "agent-circle" : ""
           }`}
-          onClick={() => setListening(!listening)}
-        ></div>
-        <h2
-          className={`text-4xl font-bold text-white ${
-            listening ? "visible" : "invisible"
-          }`}
-        >
-          Listening...
-        </h2>
+          onClick={toggleRecording}
+        ></button>
+        {subtitle && (
+          <p className="text-center text-lg max-w-md mx-auto">{subtitle}</p>
+        )}
+        {recording && (
+          <div className="flex justify-center items-center space-x-4">
+            <p className="text-4xl text-white font-bold">Listening...</p>
+          </div>
+        )}
+        {showLoadingDots && (
+          <div className="loading-dots flex justify-center items-center">
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+        )}
+        {showImages && (
+          <img
+            className="w-[200px] rounded-2xl floating"
+            src={imageList[currentImageIndex]}
+            alt="Displayed Image"
+          />
+        )}
       </div>
     </main>
   );
