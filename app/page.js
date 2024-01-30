@@ -5,32 +5,49 @@ import { useState, useEffect } from "react";
 export default function Home() {
   const [listening, setListening] = useState(false);
   const [audioData, setAudioData] = useState(null);
-  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioStream, setAudioStream] = useState(null);
 
   useEffect(() => {
-    if (listening) {
-      navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then((stream) => {
-          const newMediaRecorder = new MediaRecorder(stream);
-          setMediaRecorder(newMediaRecorder);
-          let chunks = [];
-          newMediaRecorder.ondataavailable = (event) => chunks.push(event.data);
-          newMediaRecorder.onstop = () => {
-            const newAudioData = new Blob(chunks, {
-              type: "audio/mp3",
-            });
-            setAudioData(newAudioData);
-            playAudio(newAudioData);
-          };
-          newMediaRecorder.start();
-        })
-        .catch((error) => console.error("Audio recording error:", error));
-    } else if (mediaRecorder) {
-      mediaRecorder.stop();
-      mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+    // Request microphone permission at page load
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => setAudioStream(stream))
+      .catch((error) =>
+        console.error("Audio recording permission error:", error)
+      );
+
+    return () => {
+      // Cleanup the stream when the component unmounts
+      if (audioStream) {
+        audioStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    let newMediaRecorder;
+
+    if (listening && audioStream) {
+      newMediaRecorder = new MediaRecorder(audioStream);
+      let chunks = [];
+
+      newMediaRecorder.ondataavailable = (event) => chunks.push(event.data);
+      newMediaRecorder.onstop = () => {
+        const newAudioData = new Blob(chunks, { type: "audio/mp3" });
+        setAudioData(newAudioData);
+        playAudio(newAudioData);
+      };
+
+      newMediaRecorder.start();
     }
-  }, [listening]);
+
+    return () => {
+      // Stop the media recorder when the listening state changes
+      if (newMediaRecorder) {
+        newMediaRecorder.stop();
+      }
+    };
+  }, [listening, audioStream]);
 
   const playAudio = (audioBlob) => {
     const audioUrl = URL.createObjectURL(audioBlob);
