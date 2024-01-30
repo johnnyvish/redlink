@@ -8,29 +8,40 @@ export default function Home() {
   const [mediaRecorder, setMediaRecorder] = useState(null);
 
   useEffect(() => {
-    if (listening) {
-      navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then((stream) => {
-          const newMediaRecorder = new MediaRecorder(stream);
-          setMediaRecorder(newMediaRecorder);
-          let chunks = [];
-          newMediaRecorder.ondataavailable = (event) => chunks.push(event.data);
-          newMediaRecorder.onstop = () => {
-            const newAudioData = new Blob(chunks, {
-              type: "audio/mp3",
-            });
-            setAudioData(newAudioData);
-            playAudio(newAudioData);
-          };
-          newMediaRecorder.start();
-        })
-        .catch((error) => console.error("Audio recording error:", error));
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        const newMediaRecorder = new MediaRecorder(stream);
+        setMediaRecorder(newMediaRecorder);
+      })
+      .catch((error) => console.error("Audio recording error:", error));
+
+    return () => {
+      if (mediaRecorder) {
+        mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (listening && mediaRecorder) {
+      let chunks = [];
+      mediaRecorder.ondataavailable = (event) => chunks.push(event.data);
+      mediaRecorder.onstop = () => {
+        const newAudioData = new Blob(chunks, { type: "audio/mp3" });
+        setAudioData(newAudioData);
+      };
+      mediaRecorder.start();
     } else if (mediaRecorder) {
       mediaRecorder.stop();
-      mediaRecorder.stream.getTracks().forEach((track) => track.stop());
     }
-  }, [listening]);
+  }, [listening, mediaRecorder]);
+
+  useEffect(() => {
+    if (audioData) {
+      playAudio(audioData);
+    }
+  }, [audioData]);
 
   const playAudio = (audioBlob) => {
     const audioUrl = URL.createObjectURL(audioBlob);
