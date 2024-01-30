@@ -8,7 +8,6 @@ export default function Home() {
   const [audioStream, setAudioStream] = useState(null);
 
   useEffect(() => {
-    // Request microphone permission at page load
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((stream) => setAudioStream(stream))
@@ -17,7 +16,6 @@ export default function Home() {
       );
 
     return () => {
-      // Cleanup the stream when the component unmounts
       if (audioStream) {
         audioStream.getTracks().forEach((track) => track.stop());
       }
@@ -42,7 +40,6 @@ export default function Home() {
     }
 
     return () => {
-      // Stop the media recorder when the listening state changes
       if (newMediaRecorder) {
         newMediaRecorder.stop();
       }
